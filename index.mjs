@@ -71,7 +71,7 @@ try {
       }
     }
     if (check) {
-      octokit.rest.checks.update({
+      await octokit.rest.checks.update({
         check_run_id: check.id,
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
