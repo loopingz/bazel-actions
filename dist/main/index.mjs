@@ -30985,22 +30985,6 @@ try {
         output += `<details><summary>stdout</summary>${res.stdout.toString()}</details>\n\n`;
       }
     }
-    if (check) {
-      octokit.rest.checks.update({
-        check_run_id: check.id,
-        owner: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.owner,
-        repo: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.repo,
-        name: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("checkName"),
-        conclusion: err > 0 ? "failure" : undefined,
-        output: {
-          title: `Bazel run on tag ${tag}`,
-          summary: `${targets.length} tasks${
-            err > 0 ? ` - ${err} errored` : ""
-          }`,
-          text: output,
-        },
-      });
-    }
   }
   _actions_core__WEBPACK_IMPORTED_MODULE_0__.endGroup();
   let took = `Took ${(0,pretty_ms__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .Z)(Date.now() - start)}`;
