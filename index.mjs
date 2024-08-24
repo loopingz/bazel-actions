@@ -70,6 +70,22 @@ try {
         output += `<details><summary>stdout</summary>${res.stdout.toString()}</details>\n\n`;
       }
     }
+    if (check) {
+      await octokit.rest.checks.update({
+        check_run_id: check.id,
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        name: core.getInput("checkName"),
+        conclusion: err > 0 ? "failure" : undefined,
+        output: {
+          title: `Bazel run on tag ${tag}`,
+          summary: `${targets.length} tasks${
+            err > 0 ? ` - ${err} errored` : ""
+          }`,
+          text: output,
+        },
+      });
+    }
   }
   core.endGroup();
   let took = `Took ${prettyMilliseconds(Date.now() - start)}`;
