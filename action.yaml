@@ -2,8 +2,22 @@ name: "Bazel Actions"
 description: "Run several targets and output their result in checks"
 inputs:
   tag:
-    description: 'Tag to use to collect target: bazel query "attr(tags, \\${tag}\\b, //...)"'
-    required: true
+    description: "Tag to use to collect target: bazel query attr(tags, \\${tag}\\b, //...)"
+    required: false
+  query:
+    description: "Targets to include"
+    required: false
+  excludes:
+    description: "Targets to excludes (NOT IMPLEMENTED)"
+    required: false
+  ignoreSuccessOutput:
+    description: "Do not display output on success"
+    default: "true"
+    required: false
+  checkName:
+    description: "Name to use for check"
+    default: "bazel-run"
+    required: false
 runs:
   using: "node20"
-  main: "index.mjs"
+  main: "dist/main/index.mjs"
