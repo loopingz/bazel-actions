@@ -1,0 +1,9 @@
+name: "Bazel Actions"
+description: "Run several targets and output their result in checks"
+inputs:
+  tag:
+    description: 'Tag to use to collect target: bazel query "attr(tags, \\${tag}\\b, //...)"'
+    required: true
+runs:
+  using: "node20"
+  main: "index.js"
