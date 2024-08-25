@@ -71,12 +71,38 @@ try {
       }
     }
     if (check) {
-      await octokit.rest.checks.update({
+      await octokit.rest.checks
+        .update({
+          check_run_id: check.id,
+          owner: github.context.repo.owner,
+          repo: github.context.repo.repo,
+          name: core.getInput("checkName"),
+          conclusion: err > 0 ? "failure" : undefined,
+          output: {
+            title: `Bazel run on tag ${tag}`,
+            summary: `${targets.length} tasks${
+              err > 0 ? ` - ${err} errored` : ""
+            }`,
+            text: output,
+          },
+        })
+        .catch((e) => {
+          core.warning(`Could not update status: ${e.message}`);
+        });
+    }
+  }
+  core.endGroup();
+  let took = `Took ${prettyMilliseconds(Date.now() - start)}`;
+  output += `\n\n${took}\n\n`;
+  if (check) {
+    await octokit.rest.checks
+      .update({
         check_run_id: check.id,
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
+        completed_at: new Date().toISOString(),
+        conclusion: err > 0 ? "failure" : "success",
         name: core.getInput("checkName"),
-        conclusion: err > 0 ? "failure" : undefined,
         output: {
           title: `Bazel run on tag ${tag}`,
           summary: `${targets.length} tasks${
@@ -84,26 +110,10 @@ try {
           }`,
           text: output,
         },
+      })
+      .catch((e) => {
+        core.warning(`Could not update status: ${e.message}`);
       });
-    }
-  }
-  core.endGroup();
-  let took = `Took ${prettyMilliseconds(Date.now() - start)}`;
-  output += `\n\n${took}\n\n`;
-  if (check) {
-    await octokit.rest.checks.update({
-      check_run_id: check.id,
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      completed_at: new Date().toISOString(),
-      conclusion: err > 0 ? "failure" : "success",
-      name: core.getInput("checkName"),
-      output: {
-        title: `Bazel run on tag ${tag}`,
-        summary: `${targets.length} tasks${err > 0 ? ` - ${err} errored` : ""}`,
-        text: output,
-      },
-    });
   }
 } catch (error) {
   // Handle errors and indicate failure
