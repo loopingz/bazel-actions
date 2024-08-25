@@ -67,7 +67,7 @@ try {
     } else {
       output += `## :white_check_mark: ${target}\n\n`;
       if (!ignoreSuccessOutput) {
-        output += `<details><summary>stdout</summary>${res.stdout.toString()}</details>\n\n`;
+        output += `<details><summary>Details</summary>\n\n\`\`\`${res.stdout.toString()}\`\`\`\n\n</details>\n\n`;
       }
     }
     if (check) {
@@ -89,7 +89,7 @@ try {
   }
   core.endGroup();
   let took = `Took ${prettyMilliseconds(Date.now() - start)}`;
-  output += `\n\n${took}\n`;
+  output += `\n\n${took}\n\n`;
   if (check) {
     await octokit.rest.checks.update({
       check_run_id: check.id,
