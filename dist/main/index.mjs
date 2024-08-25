@@ -30976,23 +30976,33 @@ try {
     .filter((e) => e != "");
   targets.forEach((target) => _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(target));
   _actions_core__WEBPACK_IMPORTED_MODULE_0__.endGroup();
-  if (check) {
-    await octokit.rest.checks.update({
-      check_run_id: check.id,
-      owner: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.owner,
-      repo: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.repo,
-      name: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("checkName"),
-      output: {
-        title: `Bazel run on tag ${tag}`,
-        summary: `${targets.length} tasks`,
-      },
-    });
-  }
   let output = `# Bazel run on tag ${tag}\n\n`;
   _actions_core__WEBPACK_IMPORTED_MODULE_0__.startGroup(`Running ${targets.length} targets`);
   let t = 1;
   let err = 0;
   for (let target of targets) {
+    if (check) {
+      await octokit.rest.checks
+        .update({
+          check_run_id: check.id,
+          owner: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.owner,
+          repo: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.repo,
+          name: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("checkName"),
+          conclusion: err > 0 ? "failure" : undefined,
+          output: {
+            title: `Bazel run on tag ${tag}`,
+            summary: `${targets.length} tasks - ${t - 1 - err} succeed - ${
+              targets.length - (t - 1)
+            } pending${
+              err > 0 ? ` - ${err} errored` : ""
+            } - bazel run ${target}`,
+            text: output,
+          },
+        })
+        .catch((e) => {
+          _actions_core__WEBPACK_IMPORTED_MODULE_0__.warning(`Could not update status: ${e.message}`);
+        });
+    }
     _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`[${t}/${targets.length}] Target: ${target}`);
     const res = await spawnPromise(`bazel run ${target}`, {
       shell: true,
@@ -31005,26 +31015,6 @@ try {
       if (!ignoreSuccessOutput) {
         output += `<details><summary>Details</summary>\n\n\`\`\`${res.stdout.toString()}\`\`\`\n\n</details>\n\n`;
       }
-    }
-    if (check) {
-      await octokit.rest.checks
-        .update({
-          check_run_id: check.id,
-          owner: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.owner,
-          repo: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.repo,
-          name: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("checkName"),
-          conclusion: err > 0 ? "failure" : undefined,
-          output: {
-            title: `Bazel run on tag ${tag}`,
-            summary: `${targets.length} tasks - ${t - err} succeed - ${
-              targets.length - t
-            } pending${err > 0 ? ` - ${err} errored` : ""}`,
-            text: output,
-          },
-        })
-        .catch((e) => {
-          _actions_core__WEBPACK_IMPORTED_MODULE_0__.warning(`Could not update status: ${e.message}`);
-        });
     }
     t++;
   }
