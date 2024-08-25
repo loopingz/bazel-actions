@@ -57,7 +57,7 @@ try {
   let t = 1;
   let err = 0;
   for (let target of targets) {
-    core.info(`[${t++}/${targets.length}] Target: ${target}`);
+    core.info(`[${t}/${targets.length}] Target: ${target}`);
     const res = spawnSync(`bazel run ${target}`, {
       shell: true,
     });
@@ -80,9 +80,9 @@ try {
           conclusion: err > 0 ? "failure" : undefined,
           output: {
             title: `Bazel run on tag ${tag}`,
-            summary: `${targets.length} tasks${
-              err > 0 ? ` - ${err} errored` : ""
-            }`,
+            summary: `${targets.length} tasks - ${t - err} succeed - ${
+              targets.length - t
+            } pending${err > 0 ? ` - ${err} errored` : ""}`,
             text: output,
           },
         })
@@ -90,6 +90,7 @@ try {
           core.warning(`Could not update status: ${e.message}`);
         });
     }
+    t++;
   }
   core.endGroup();
   let took = `Took ${prettyMilliseconds(Date.now() - start)}`;
@@ -105,7 +106,7 @@ try {
         name: core.getInput("checkName"),
         output: {
           title: `Bazel run on tag ${tag}`,
-          summary: `${targets.length} tasks${
+          summary: `${targets.length} tasks - ${t - err} succeed${
             err > 0 ? ` - ${err} errored` : ""
           }`,
           text: output,
