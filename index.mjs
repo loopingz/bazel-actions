@@ -1,7 +1,28 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { execSync, spawnSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import prettyMilliseconds from "pretty-ms";
+
+async function spawnPromise(command, options) {
+  return new Promise((resolve, reject) => {
+    let p = spawn(command, options);
+    let stdout = "";
+    let stderr = "";
+    p.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    p.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    p.on("close", (status) => {
+      resolve({
+        stdout,
+        stderr,
+        status,
+      });
+    });
+  });
+}
 
 try {
   const tag = core.getInput("tag");
@@ -58,7 +79,7 @@ try {
   let err = 0;
   for (let target of targets) {
     core.info(`[${t}/${targets.length}] Target: ${target}`);
-    const res = spawnSync(`bazel run ${target}`, {
+    const res = await spawnPromise(`bazel run ${target}`, {
       shell: true,
     });
     if (res.status !== 0) {

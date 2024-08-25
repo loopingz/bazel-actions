@@ -30918,6 +30918,27 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 
 
 
+async function spawnPromise(command, options) {
+  return new Promise((resolve, reject) => {
+    let p = (0,child_process__WEBPACK_IMPORTED_MODULE_2__.spawn)(command, options);
+    let stdout = "";
+    let stderr = "";
+    p.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    p.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    p.on("close", (status) => {
+      resolve({
+        stdout,
+        stderr,
+        status,
+      });
+    });
+  });
+}
+
 try {
   const tag = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("tag");
   let query = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("query");
@@ -30972,8 +30993,8 @@ try {
   let t = 1;
   let err = 0;
   for (let target of targets) {
-    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`[${t++}/${targets.length}] Target: ${target}`);
-    const res = (0,child_process__WEBPACK_IMPORTED_MODULE_2__.spawnSync)(`bazel run ${target}`, {
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`[${t}/${targets.length}] Target: ${target}`);
+    const res = await spawnPromise(`bazel run ${target}`, {
       shell: true,
     });
     if (res.status !== 0) {
@@ -30982,43 +31003,54 @@ try {
     } else {
       output += `## :white_check_mark: ${target}\n\n`;
       if (!ignoreSuccessOutput) {
-        output += `<details><summary>stdout</summary>${res.stdout.toString()}</details>\n\n`;
+        output += `<details><summary>Details</summary>\n\n\`\`\`${res.stdout.toString()}\`\`\`\n\n</details>\n\n`;
       }
     }
     if (check) {
-      await octokit.rest.checks.update({
+      await octokit.rest.checks
+        .update({
+          check_run_id: check.id,
+          owner: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.owner,
+          repo: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.repo,
+          name: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("checkName"),
+          conclusion: err > 0 ? "failure" : undefined,
+          output: {
+            title: `Bazel run on tag ${tag}`,
+            summary: `${targets.length} tasks - ${t - err} succeed - ${
+              targets.length - t
+            } pending${err > 0 ? ` - ${err} errored` : ""}`,
+            text: output,
+          },
+        })
+        .catch((e) => {
+          _actions_core__WEBPACK_IMPORTED_MODULE_0__.warning(`Could not update status: ${e.message}`);
+        });
+    }
+    t++;
+  }
+  _actions_core__WEBPACK_IMPORTED_MODULE_0__.endGroup();
+  let took = `Took ${(0,pretty_ms__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .Z)(Date.now() - start)}`;
+  output += `\n\n${took}\n\n`;
+  if (check) {
+    await octokit.rest.checks
+      .update({
         check_run_id: check.id,
         owner: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.owner,
         repo: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.repo,
+        completed_at: new Date().toISOString(),
+        conclusion: err > 0 ? "failure" : "success",
         name: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("checkName"),
-        conclusion: err > 0 ? "failure" : undefined,
         output: {
           title: `Bazel run on tag ${tag}`,
-          summary: `${targets.length} tasks${
+          summary: `${targets.length} tasks - ${t - err} succeed${
             err > 0 ? ` - ${err} errored` : ""
           }`,
           text: output,
         },
+      })
+      .catch((e) => {
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.warning(`Could not update status: ${e.message}`);
       });
-    }
-  }
-  _actions_core__WEBPACK_IMPORTED_MODULE_0__.endGroup();
-  let took = `Took ${(0,pretty_ms__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .Z)(Date.now() - start)}`;
-  output += `\n\n${took}\n`;
-  if (check) {
-    await octokit.rest.checks.update({
-      check_run_id: check.id,
-      owner: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.owner,
-      repo: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.repo,
-      completed_at: new Date().toISOString(),
-      conclusion: err > 0 ? "failure" : "success",
-      name: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("checkName"),
-      output: {
-        title: `Bazel run on tag ${tag}`,
-        summary: `${targets.length} tasks${err > 0 ? ` - ${err} errored` : ""}`,
-        text: output,
-      },
-    });
   }
 } catch (error) {
   // Handle errors and indicate failure
