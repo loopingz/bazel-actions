@@ -24,3 +24,9 @@ kubectl(
     tags = ["on_push"],
 )
 ```
+
+You can check in your repository with:
+
+```
+bazel query "attr(tags, '\\bon_push\\b', //...)"
+```
