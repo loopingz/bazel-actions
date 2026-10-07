@@ -21,6 +21,9 @@ With `GITHUB_TOKEN` set, progress is reported in a check run. Where the Checks A
 available (Forgejo/Gitea, or a token without `checks: write`), the action logs a warning and runs
 the targets without a check.
 
+The report is also written to the job summary (GitHub run page, Forgejo 17+), and the step fails
+when any target fails.
+
 ```
 kubectl(
     name = "apply",
