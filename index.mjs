@@ -41,8 +41,10 @@ try {
   let check;
   if (process.env["GITHUB_TOKEN"]) {
     octokit = github.getOctokit(process.env["GITHUB_TOKEN"]);
-    check = (
-      await octokit.rest.checks.create({
+    // The Checks API may be unavailable (Forgejo/Gitea, token without checks: write):
+    // run the targets anyway, without a check
+    check = await octokit.rest.checks
+      .create({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
         name: core.getInput("checkName"),
@@ -50,7 +52,11 @@ try {
         status: "in_progress",
         started_at: new Date().toISOString(),
       })
-    ).data;
+      .then((res) => res.data)
+      .catch((e) => {
+        core.warning(`Could not create check, continuing without it: ${e.message}`);
+        return undefined;
+      });
   }
 
   const ignoreSuccessOutput = core.getBooleanInput("ignoreSuccessOutput");

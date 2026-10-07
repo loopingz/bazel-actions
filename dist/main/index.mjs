@@ -30956,8 +30956,10 @@ try {
   let check;
   if (process.env["GITHUB_TOKEN"]) {
     octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit(process.env["GITHUB_TOKEN"]);
-    check = (
-      await octokit.rest.checks.create({
+    // The Checks API may be unavailable (Forgejo/Gitea, token without checks: write):
+    // run the targets anyway, without a check
+    check = await octokit.rest.checks
+      .create({
         owner: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.owner,
         repo: _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo.repo,
         name: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("checkName"),
@@ -30965,7 +30967,11 @@ try {
         status: "in_progress",
         started_at: new Date().toISOString(),
       })
-    ).data;
+      .then((res) => res.data)
+      .catch((e) => {
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.warning(`Could not create check, continuing without it: ${e.message}`);
+        return undefined;
+      });
   }
 
   const ignoreSuccessOutput = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput("ignoreSuccessOutput");
