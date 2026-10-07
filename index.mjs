@@ -100,6 +100,9 @@ try {
     });
     if (res.status !== 0) {
       err++;
+      // Without a check run (Forgejo, no token) the log is the only place to see why
+      core.error(`${target} failed with exit code ${res.status}`);
+      core.info(res.stderr.toString());
       output += `## :x: ${target}\n\n<details><summary>Details</summary>stderr\n\n\`\`\`${res.stderr.toString()}\`\`\`\n\nstdout\n\n\`\`\`${res.stdout.toString()}\`\`\`\n\n</details>\n\n`;
     } else {
       output += `## :white_check_mark: ${target}\n\n`;
@@ -132,6 +135,16 @@ try {
       .catch((e) => {
         core.warning(`Could not update status: ${e.message}`);
       });
+  }
+  // Job summary: GitHub run page, Forgejo >= 17
+  await core.summary
+    .addRaw(output)
+    .write()
+    .catch((e) => {
+      core.warning(`Could not write job summary: ${e.message}`);
+    });
+  if (err > 0) {
+    core.setFailed(`${err} of ${targets.length} targets failed`);
   }
 } catch (error) {
   // Handle errors and indicate failure
