@@ -26,6 +26,9 @@ async function spawnPromise(command, options) {
 
 try {
   const tag = core.getInput("tag");
+  // The build tool: bazel, or a compatible one such as blast
+  const bazel = core.getInput("bazel") || "bazel";
+  const buildFirst = core.getInput("build") !== "false";
   let query = core.getInput("query");
   let start = Date.now();
 
@@ -61,13 +64,33 @@ try {
 
   const ignoreSuccessOutput = core.getBooleanInput("ignoreSuccessOutput");
   core.startGroup(`Collecting targets for tag '${tag}'`);
-  const targets = execSync(`bazel query ${query}`)
+  const targets = execSync(`${bazel} query ${query}`)
     .toString()
     .split("\n")
     .filter((e) => e != "");
   targets.forEach((target) => core.info(target));
   core.endGroup();
   let output = `# Bazel run on tag ${tag}\n\n`;
+  // Build every target in one command: their actions run in parallel and the cache is checked once,
+  // so that each `run` below only executes an up-to-date target. A failed build does not stop the
+  // runs: each target then reports its own failure.
+  if (buildFirst && targets.length > 0) {
+    core.startGroup(`Building ${targets.length} targets`);
+    const built = Date.now();
+    const res = await new Promise((resolve) => {
+      const p = spawn(bazel, ["build", ...targets], { stdio: "inherit" });
+      p.on("close", resolve);
+      p.on("error", (e) => {
+        core.warning(`Could not start ${bazel} build: ${e.message}`);
+        resolve(-1);
+      });
+    });
+    core.endGroup();
+    if (res !== 0) {
+      core.warning(`${bazel} build exited with ${res}: running every target to report each failure`);
+    }
+    core.info(`Build took ${prettyMilliseconds(Date.now() - built)}`);
+  }
   core.startGroup(`Running ${targets.length} targets`);
   let t = 1;
   let err = 0;
@@ -86,7 +109,7 @@ try {
               targets.length - (t - 1)
             } pending${
               err > 0 ? ` - ${err} errored` : ""
-            } - bazel run ${target}`,
+            } - ${bazel} run ${target}`,
             text: output,
           },
         })
@@ -95,7 +118,7 @@ try {
         });
     }
     core.info(`[${t}/${targets.length}] Target: ${target}`);
-    const res = await spawnPromise(`bazel run ${target}`, {
+    const res = await spawnPromise(`${bazel} run ${target}`, {
       shell: true,
     });
     if (res.status !== 0) {

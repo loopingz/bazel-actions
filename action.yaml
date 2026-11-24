@@ -14,6 +14,14 @@ inputs:
     description: "Do not display output on success"
     default: "true"
     required: false
+  bazel:
+    description: "Build tool to run: bazel, or a compatible one such as blast"
+    default: "bazel"
+    required: false
+  build:
+    description: "Build every target in one command before running them one by one"
+    default: "true"
+    required: false
   checkName:
     description: "Name to use for check"
     default: "bazel-run"

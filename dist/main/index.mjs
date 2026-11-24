@@ -30941,6 +30941,9 @@ async function spawnPromise(command, options) {
 
 try {
   const tag = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("tag");
+  // The build tool: bazel, or a compatible one such as blast
+  const bazel = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("bazel") || "bazel";
+  const buildFirst = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("build") !== "false";
   let query = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("query");
   let start = Date.now();
 
@@ -30976,13 +30979,33 @@ try {
 
   const ignoreSuccessOutput = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput("ignoreSuccessOutput");
   _actions_core__WEBPACK_IMPORTED_MODULE_0__.startGroup(`Collecting targets for tag '${tag}'`);
-  const targets = (0,child_process__WEBPACK_IMPORTED_MODULE_2__.execSync)(`bazel query ${query}`)
+  const targets = (0,child_process__WEBPACK_IMPORTED_MODULE_2__.execSync)(`${bazel} query ${query}`)
     .toString()
     .split("\n")
     .filter((e) => e != "");
   targets.forEach((target) => _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(target));
   _actions_core__WEBPACK_IMPORTED_MODULE_0__.endGroup();
   let output = `# Bazel run on tag ${tag}\n\n`;
+  // Build every target in one command: their actions run in parallel and the cache is checked once,
+  // so that each `run` below only executes an up-to-date target. A failed build does not stop the
+  // runs: each target then reports its own failure.
+  if (buildFirst && targets.length > 0) {
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.startGroup(`Building ${targets.length} targets`);
+    const built = Date.now();
+    const res = await new Promise((resolve) => {
+      const p = (0,child_process__WEBPACK_IMPORTED_MODULE_2__.spawn)(bazel, ["build", ...targets], { stdio: "inherit" });
+      p.on("close", resolve);
+      p.on("error", (e) => {
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.warning(`Could not start ${bazel} build: ${e.message}`);
+        resolve(-1);
+      });
+    });
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.endGroup();
+    if (res !== 0) {
+      _actions_core__WEBPACK_IMPORTED_MODULE_0__.warning(`${bazel} build exited with ${res}: running every target to report each failure`);
+    }
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Build took ${(0,pretty_ms__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .Z)(Date.now() - built)}`);
+  }
   _actions_core__WEBPACK_IMPORTED_MODULE_0__.startGroup(`Running ${targets.length} targets`);
   let t = 1;
   let err = 0;
@@ -31001,7 +31024,7 @@ try {
               targets.length - (t - 1)
             } pending${
               err > 0 ? ` - ${err} errored` : ""
-            } - bazel run ${target}`,
+            } - ${bazel} run ${target}`,
             text: output,
           },
         })
@@ -31010,7 +31033,7 @@ try {
         });
     }
     _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`[${t}/${targets.length}] Target: ${target}`);
-    const res = await spawnPromise(`bazel run ${target}`, {
+    const res = await spawnPromise(`${bazel} run ${target}`, {
       shell: true,
     });
     if (res.status !== 0) {
