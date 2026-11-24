@@ -21,6 +21,18 @@ With `GITHUB_TOKEN` set, progress is reported in a check run. Where the Checks A
 available (Forgejo/Gitea, or a token without `checks: write`), the action logs a warning and runs
 the targets without a check.
 
+Before running the targets one by one, the action builds them all in one `build` command, so that
+their actions run in parallel and each `run` only executes an up-to-date target (`build: false`
+turns it off). `bazel` names the build tool, `bazel` by default: any tool that takes `query`,
+`build` and `run` like Bazel works, such as [blast](https://git.loopingz.com/loopingz/blast):
+
+```
+      - uses: loopingz/bazel-actions@main
+        with:
+          tag: on_push
+          bazel: blast
+```
+
 The report is also written to the job summary (GitHub run page, Forgejo 17+), and the step fails
 when any target fails.
 
